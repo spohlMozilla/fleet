@@ -6212,7 +6212,7 @@ org_settings:
 			name: "valid pdf file (no existing EULA uploaded)",
 			cfg:  createGlobalGitOpsConfig(fmt.Sprintf(`end_user_license_agreement: "%s"`, pdfPath)),
 			mockSetup: func(t *testing.T, ds *mock.Store, dir string) {
-				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform string) (*fleet.MDMEULA, error) {
+				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform) (*fleet.MDMEULA, error) {
 					return nil, &notFoundError{} // No existing EULA
 				}
 			},
@@ -6231,7 +6231,7 @@ org_settings:
 			name: "relative path to working dir to pdf file (no existing EULA uploaded)",
 			cfg:  createGlobalGitOpsConfig(`end_user_license_agreement: "./testdata/gitops/tiny_eula.pdf"`),
 			mockSetup: func(t *testing.T, ds *mock.Store, dir string) {
-				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform string) (*fleet.MDMEULA, error) {
+				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform) (*fleet.MDMEULA, error) {
 					return nil, &notFoundError{} // No existing EULA
 				}
 			},
@@ -6261,7 +6261,7 @@ org_settings:
 				err = tmpPDF.Close()
 				require.NoError(t, err)
 
-				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform string) (*fleet.MDMEULA, error) {
+				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform) (*fleet.MDMEULA, error) {
 					return nil, &notFoundError{} // No existing EULA
 				}
 			},
@@ -6280,7 +6280,7 @@ org_settings:
 			name: "valid new pdf file (different EULA already uploaded)",
 			cfg:  createGlobalGitOpsConfig(fmt.Sprintf(`end_user_license_agreement: "%s"`, pdfPath)),
 			mockSetup: func(t *testing.T, ds *mock.Store, dir string) {
-				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform string) (*fleet.MDMEULA, error) {
+				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform) (*fleet.MDMEULA, error) {
 					return &fleet.MDMEULA{
 						Name:  pdfPath,
 						Token: "test-token",
@@ -6304,7 +6304,7 @@ org_settings:
 			name: "no EULA specified (no existing EULA uploaded)",
 			cfg:  createGlobalGitOpsConfig(""),
 			mockSetup: func(t *testing.T, ds *mock.Store, dir string) {
-				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform string) (*fleet.MDMEULA, error) {
+				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform) (*fleet.MDMEULA, error) {
 					return nil, &notFoundError{} // No existing EULA
 				}
 			},
@@ -6325,7 +6325,7 @@ org_settings:
 			name: "deleting existing EULA",
 			cfg:  createGlobalGitOpsConfig(""),
 			mockSetup: func(t *testing.T, ds *mock.Store, dir string) {
-				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform string) (*fleet.MDMEULA, error) {
+				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform) (*fleet.MDMEULA, error) {
 					return &fleet.MDMEULA{
 						Name:  pdfPath,
 						Token: "test-token",
@@ -6347,7 +6347,7 @@ org_settings:
 			name: "not a PDF file",
 			cfg:  createGlobalGitOpsConfig(fmt.Sprintf(`end_user_license_agreement: "%s"`, invalidPDFPath)),
 			mockSetup: func(t *testing.T, ds *mock.Store, dir string) {
-				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform string) (*fleet.MDMEULA, error) {
+				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform) (*fleet.MDMEULA, error) {
 					return nil, &notFoundError{} // No existing EULA
 				}
 			},
@@ -6364,7 +6364,7 @@ org_settings:
 			name: "not a PDF file replacing an existing EULA keeps it",
 			cfg:  createGlobalGitOpsConfig(fmt.Sprintf(`end_user_license_agreement: "%s"`, invalidPDFPath)),
 			mockSetup: func(t *testing.T, ds *mock.Store, dir string) {
-				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform string) (*fleet.MDMEULA, error) {
+				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform) (*fleet.MDMEULA, error) {
 					return &fleet.MDMEULA{Name: "eula.pdf", Token: "test-token", Sha256: []byte("other")}, nil
 				}
 			},
@@ -6381,7 +6381,7 @@ org_settings:
 			name: "uploading the same EULA again",
 			cfg:  createGlobalGitOpsConfig(""),
 			mockSetup: func(t *testing.T, ds *mock.Store, dir string) {
-				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform string) (*fleet.MDMEULA, error) {
+				ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform) (*fleet.MDMEULA, error) {
 					hash := sha256.Sum256(pdfContent) // Simulate same EULA
 					return &fleet.MDMEULA{
 						Name:   pdfPath,
@@ -6411,7 +6411,7 @@ org_settings:
 			ds.MDMInsertEULAFunc = func(ctx context.Context, eula *fleet.MDMEULA) error {
 				return nil
 			}
-			ds.MDMDeleteEULAFunc = func(ctx context.Context, platform, token string) error {
+			ds.MDMDeleteEULAFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform, token string) error {
 				return nil
 			}
 
@@ -6653,18 +6653,18 @@ org_settings:
 			ds.CleanupAllHostMDMProfilesForPlatformFunc = func(ctx context.Context, platform string) error { return nil }
 
 			var inserted, deleted []string
-			ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform string) (*fleet.MDMEULA, error) {
+			ds.MDMGetEULAMetadataFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform) (*fleet.MDMEULA, error) {
 				if platform == fleet.MDMEULAPlatformWindows && tt.existing != nil {
 					return tt.existing, nil
 				}
 				return nil, &notFoundError{}
 			}
 			ds.MDMInsertEULAFunc = func(ctx context.Context, eula *fleet.MDMEULA) error {
-				inserted = append(inserted, eula.Platform+":"+eula.Name)
+				inserted = append(inserted, string(eula.Platform)+":"+eula.Name)
 				return nil
 			}
-			ds.MDMDeleteEULAFunc = func(ctx context.Context, platform, token string) error {
-				deleted = append(deleted, platform+":"+token)
+			ds.MDMDeleteEULAFunc = func(ctx context.Context, platform fleet.MDMEULAPlatform, token string) error {
+				deleted = append(deleted, string(platform)+":"+token)
 				return nil
 			}
 
@@ -6690,12 +6690,12 @@ org_settings:
 			require.NoError(t, err, out.String())
 			assert.Contains(t, out.String(), tt.wantRealOut)
 			if tt.wantInsert {
-				require.Equal(t, []string{fleet.MDMEULAPlatformWindows + ":terms.md"}, inserted)
+				require.Equal(t, []string{string(fleet.MDMEULAPlatformWindows) + ":terms.md"}, inserted)
 			} else {
 				assert.Empty(t, inserted)
 			}
 			if tt.wantDelete {
-				require.Equal(t, []string{fleet.MDMEULAPlatformWindows + ":existing"}, deleted)
+				require.Equal(t, []string{string(fleet.MDMEULAPlatformWindows) + ":existing"}, deleted)
 			} else {
 				assert.Empty(t, deleted)
 			}
